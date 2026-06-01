@@ -1,0 +1,186 @@
+# Psicomichi API — QA Setup
+
+## Requisitos
+
+- Docker
+- Docker Compose
+- Git
+
+## 1. Clonar repositorio
+
+```bash
+git clone <REPO_URL>
+cd psicomichi-api
+2. Crear archivo .env
+cp .env.qa.example .env
+
+En Windows PowerShell:
+
+Copy-Item .env.qa.example .env
+3. Levantar backend + base de datos
+docker compose up --build
+
+Esto levanta:
+
+PostgreSQL
+FastAPI
+Migraciones Alembic automáticas
+Seeders QA si RUN_SEEDERS=true
+4. URLs
+
+Backend:
+
+http://localhost:8000
+
+Swagger:
+
+http://localhost:8000/docs
+
+Healthcheck:
+
+http://localhost:8000/api/v1/health
+5. Usuarios QA
+
+Password default:
+
+NubeMorada123!
+
+Usuarios esperados:
+
+admin@psicomichi.com
+psicologa@psicomichi.com
+asistente@psicomichi.com
+cliente@psicomichi.com
+6. Conectar frontend
+
+En el frontend usar:
+
+VITE_API_BASE_URL=http://localhost:8000/api/v1
+
+Axios debe tener:
+
+withCredentials: true
+7. Reiniciar datos QA
+
+Para borrar base y volver a sembrar datos:
+
+docker compose down -v
+docker compose up --build
+8. Ver logs
+docker compose logs -f api
+docker compose logs -f db
+9. Entrar al contenedor API
+docker compose exec api sh
+10. Correr migraciones manualmente
+docker compose exec api alembic upgrade head
+11. Correr seeders manualmente
+docker compose exec api python -m scripts.seed_users --password NubeMorada123!
+docker compose exec api python -m scripts.seed_patients --count 25
+docker compose exec api python -m scripts.seed_services
+
+Commit:
+
+```bash
+git add README_QA.md
+git commit -m "docs: add qa docker setup guide"
+9. Importante: revisar seed_users.py
+
+Tu entrypoint usa:
+
+python -m scripts.seed_users --password "$SEED_DEFAULT_PASSWORD"
+
+Entonces tu scripts/seed_users.py debe soportar:
+
+--password
+
+Si actualmente no lo soporta, hay dos opciones:
+
+Opción A — agregar soporte --password
+
+Ideal.
+
+Opción B — quitar seeder automático de users
+
+Y dejar que QA corra manualmente.
+
+Pero para QA, mejor opción A.
+
+10. Flujo final para QA
+
+Esto es lo que le pasarías a QA:
+
+git clone <repo>
+cd psicomichi-api
+cp .env.qa.example .env
+docker compose up --build
+
+Luego abrir:
+
+http://localhost:8000/docs
+
+Y probar health:
+
+http://localhost:8000/api/v1/health
+
+Credenciales:
+
+admin@psicomichi.com
+NubeMorada123!
+11. Qué necesita el frontend para conectarse
+
+En el repo frontend:
+
+VITE_API_BASE_URL=http://localhost:8000/api/v1
+
+Y en Axios:
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL,
+  withCredentials: true,
+});
+
+Como usamos cookies HttpOnly para refresh token, withCredentials es obligatorio.
+
+12. Seguridad QA
+
+Para QA está bien:
+
+REFRESH_COOKIE_SECURE=false
+DEBUG=true
+APP_ENV=qa
+
+Pero para producción después debe ser:
+
+REFRESH_COOKIE_SECURE=true
+DEBUG=false
+APP_ENV=production
+SECRET_KEY=valor_real_seguro
+13. Prueba rápida después de levantar
+curl http://localhost:8000/api/v1/health
+
+Esperado:
+
+{
+  "status": "ok",
+  "app_name": "Psicomichi API",
+  "environment": "qa",
+  "database": "ok"
+}
+14. Posibles errores comunes
+Puerto 8000 ocupado
+
+Cambiar en .env:
+
+API_EXTERNAL_PORT=8001
+
+Backend quedaría:
+
+http://localhost:8001
+Puerto 5433 ocupado
+
+Cambiar:
+
+POSTGRES_EXTERNAL_PORT=5434
+Quiero resetear base
+docker compose down -v
+docker compose up --build
