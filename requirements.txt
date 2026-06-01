@@ -8,4 +8,5 @@ python-dotenv
 email-validator
 pwdlib[argon2]
 PyJWT
-python-multipartpsycopg2-binary
+python-multipart
+psycopg2-binary
