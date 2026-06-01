@@ -25,4 +25,6 @@ Thumbs.db
 
 # IDE
 .vscode/
-.idea/
+.idea/.env
+.env.local
+.env.*
